@@ -1,3 +1,4 @@
+const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
@@ -63,8 +64,71 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
     next();
 });
 
-exports.createClient = factory.createOne(Client);
+exports.deleteOutdatedImages = async (req, res, next) => {
+    //  if there are no new images to update
+    if (!req.files.coverImage && !req.files.images) return next();
 
+    const doc = await Client.findById(req.params.id);
+    // console.log(doc);
+
+    if (req.files.coverImage) {
+        fs.unlink(`public/img/client/${doc.coverImage}`, (err) => {
+            if (err) {
+                console.log(`Error deleting previous cover image file: ${err}`);
+            } else {
+                console.log(`${doc.coverImage} was deleted`);
+            }
+        });
+    }
+
+    if (req.files.images) {
+        await Promise.all(
+            doc.images.map(async (curFile) => {
+                fs.unlink(`public/img/client/${curFile}`, (err) => {
+                    if (err) {
+                        console.log(`Error deleting ${curFile} image file: ${err}`);
+                    } else {
+                        console.log(`${curFile} was deleted`);
+                    }
+                });
+            }),
+        );
+    }
+
+    next();
+};
+
+exports.deleteAllClientImages = async (req, res, next) => {
+    const doc = await Client.findById(req.params.id);
+
+    // delete the cover image
+    fs.unlink(`public/img/client/${doc.coverImage}`, (err) => {
+        if (err) {
+            console.log(`Error deleting cover image file: ${err}`);
+        } else {
+            console.log(`${doc.coverImage} was deleted`);
+        }
+    });
+
+    // delete the client images in the images array
+    if (doc.images.length > 0) {
+        await Promise.all(
+            doc.images.map(async (curFile) => {
+                fs.unlink(`public/img/client/${curFile}`, (err) => {
+                    if (err) {
+                        console.log(`Error deleting ${curFile} image file: ${err}`);
+                    } else {
+                        console.log(`${curFile} was deleted`);
+                    }
+                });
+            }),
+        );
+    }
+
+    next();
+};
+
+exports.createClient = factory.createOne(Client);
 exports.updateClient = factory.updateOne(Client);
 
 exports.getAllClients = factory.getAll(Client);

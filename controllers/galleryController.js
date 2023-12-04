@@ -1,3 +1,4 @@
+const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
@@ -24,6 +25,7 @@ const upload = multer({
 exports.uploadGalleryPhoto = upload.single('image');
 
 exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
+    // if there is no file
     if (!req.file) return next();
 
     req.file.filename = `${uniqid('img-')}-${Date.now()}.jpeg`;
@@ -58,7 +60,21 @@ exports.createGallerItem = catchAsync(async (req, res, next) => {
 
 exports.updateGalleryItem = catchAsync(async (req, res, next) => {
     // if there's a file upload, we update the image field with the newly uploaded file name
-    if (req.file) req.body.image = req.file.filename;
+    if (req.file) {
+        req.body.image = req.file.filename;
+
+        const doc = await Gallery.findById(req.params.id);
+        // console.log(doc.image);
+
+        // delete the previous used image
+        fs.unlink(`public/img/gallery/${doc.image}`, (err) => {
+            if (err) {
+                console.log(`Error deleting previous image file: ${err}`);
+            } else {
+                console.log(`${doc.image} was deleted`);
+            }
+        });
+    }
 
     const updatedItem = await Gallery.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
@@ -70,6 +86,20 @@ exports.updateGalleryItem = catchAsync(async (req, res, next) => {
         data: updatedItem,
     });
 });
+
+exports.deleteGalleryImage = async (req, res, next) => {
+    const doc = await Gallery.findById(req.params.id);
+
+    fs.unlink(`public/img/gallery/${doc.image}`, (err) => {
+        if (err) {
+            console.log(`Error deleting gallery image file: ${err}`);
+        } else {
+            console.log(`${doc.image} was deleted`);
+        }
+    });
+
+    next();
+};
 
 exports.getAllGalleryItems = factory.getAll(Gallery);
 exports.getGalleryItem = factory.getOne(Gallery);

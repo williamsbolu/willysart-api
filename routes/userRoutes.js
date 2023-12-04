@@ -1,6 +1,13 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const userController = require('../controllers/userController');
+
+const authLimiter = rateLimit({
+    limit: 7,
+    windowMs: 5 * 60 * 1000,
+    message: 'You have made too many request. Please wait 5 minutes before proceeding.',
+});
 
 const router = express.Router();
 
@@ -8,7 +15,7 @@ const router = express.Router();
 router.get('/getLoggedInStatus', authController.isLoggedInApi);
 
 router.post('/signup', authController.signup);
-router.post('/login', authController.login);
+router.post('/login', authLimiter, authController.login);
 router.get('/logout', authController.logout);
 
 router.post('/forgotPassword', authController.forgotPassword);

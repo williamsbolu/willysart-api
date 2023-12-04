@@ -42,6 +42,7 @@ const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1hr in milliseconds
     message: 'Too many request from this IP, please try again in an hour!',
 });
+
 app.use('/api', limiter);
 
 // Body Parser, Cookie parser, form data parser
@@ -59,15 +60,11 @@ app.use(xss());
 // app.use(hpp());
 app.use(
     hpp({
-        whitelist: ['name@example', 'duration@example'],
+        whitelist: ['type'],
     }),
 );
 
 app.use(compression());
-
-app.use((req, res, next) => {
-    next();
-});
 
 // (2)
 app.use('/api/v1/clients', clientRouter);

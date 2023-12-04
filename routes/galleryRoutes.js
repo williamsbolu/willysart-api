@@ -28,6 +28,7 @@ router
     .delete(
         authController.protect,
         authController.restrictTo('lead-asist', 'admin'),
+        galleryController.deleteGalleryImage,
         galleryController.deleteGalleryItem,
     );
 
