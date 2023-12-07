@@ -1,12 +1,21 @@
 const multer = require('multer');
 const sharp = require('sharp');
-const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
-
-const s3 = require('../utils/s3');
-const factory = require('./handlerFactory');
+const factory = require('../controllers/handlerFactory');
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+
+// Store files direct to the disk
+// const multerStorage = multer.diskStorage({
+//     destination: (req, file, cb) => {
+//         cb(null, 'public/img/users');
+//     },
+//     filename: (req, file, cb) => {
+//         // user-7676768agtra(id)-timestamp.jpg
+//         const ext = file.mimetype.split('/')[1];
+//         cb(null, `user-${req.user.id}-${Date.now()}.${ext}`);
+//     },
+// });
 
 // Store files in memory(buffer)
 const multerStorage = multer.memoryStorage();
@@ -30,31 +39,13 @@ exports.uploadUserPhoto = upload.single('photo');
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
     if (!req.file) return next();
 
-    const doc = await User.findById(req.user.id);
+    req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`; // so we can use it in the updateMe middleware
 
-    // ('default) means when d user updates the profile img for d first time we create a unique filename
-    if (doc.photo.startsWith('default')) {
-        req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`; // so we can use it in the updateMe middleware
-    } else {
-        // when d user is not updating for d first time we use the previous generated unique filename
-        req.file.filename = doc.photo;
-        console.log(req.file.filename);
-    }
-
-    const buffer = await sharp(req.file.buffer)
+    await sharp(req.file.buffer)
         .resize(500, 500)
         .toFormat('jpeg')
         .jpeg({ quality: 90 })
-        .toBuffer();
-
-    const command = new PutObjectCommand({
-        Bucket: process.env.BUCKET_NAME,
-        Key: req.file.filename,
-        Body: buffer,
-        ContentType: req.file.mimetype,
-    });
-
-    await s3.send(command);
+        .toFile(`public/img/users/${req.file.filename}`);
 
     next();
 });
@@ -71,6 +62,9 @@ const filterObj = (obj, ...allowedFields) => {
 };
 
 exports.updateMe = catchAsync(async (req, res, next) => {
+    // console.log(req.file); // for d multer middleware
+    // console.log(req.body);
+
     // 1. Create error if user tries to update the password
     if (req.body.password || req.body.passwordConfirm) {
         return next(
@@ -103,27 +97,6 @@ exports.getMe = (req, res, next) => {
     req.params.id = req.user.id; // adds d user id gotten fro d "protect" to the parameter
     next();
 };
-
-exports.deleteUserImage = catchAsync(async (req, res, next) => {
-    const doc = await User.findById(req.params.id);
-
-    if (!doc) {
-        return next(new AppError('No document found with that ID', 404));
-    }
-
-    // if the uses has not uploaded a profile image
-    if (doc.photo.startsWith('default')) return next();
-
-    const params = {
-        Bucket: process.env.BUCKET_NAME,
-        Key: doc.photo,
-    };
-
-    const command = new DeleteObjectCommand(params);
-    await s3.send(command);
-
-    next();
-});
 
 exports.deleteMe = catchAsync(async (req, res, next) => {
     await User.findByIdAndUpdate(req.user.id, { active: false });

@@ -30,6 +30,8 @@ const clientSchema = new mongoose.Schema({
         default: Date.now(),
         select: false,
     },
+    coverImageUrl: String,
+    imagesUrl: [String],
     slug: String,
 });
 

@@ -25,6 +25,7 @@ const gallerySchema = new mongoose.Schema({
         default: Date.now(),
         select: false,
     },
+    imageUrl: String,
 });
 
 const Gallery = mongoose.model('Gallery', gallerySchema);

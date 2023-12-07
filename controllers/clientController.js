@@ -2,6 +2,9 @@ const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+
+const s3 = require('../utils/s3');
 const AppError = require('../utils/appError');
 const Client = require('../models/clientModel');
 const factory = require('./handlerFactory');
@@ -28,18 +31,33 @@ exports.uploadClientImages = upload.fields([
 ]);
 
 exports.resizeClientImages = catchAsync(async (req, res, next) => {
-    // console.log(req.files);
-
     if (!req.files.coverImage && !req.files.images) return next();
 
     // 1) coverImage
     if (req.files.coverImage) {
-        req.body.coverImage = `${uniqid('img-')}-${Date.now()}-cover.jpeg`;
-        await sharp(req.files.coverImage[0].buffer)
+        // meaning if we are sending an update request use the previous filename
+        if (req.params.id) {
+            const doc = await Client.findById(req.params.id);
+            req.body.coverImage = doc.coverImage;
+        } else {
+            // if we're sending a create request, usea a unique filename
+            req.body.coverImage = `${uniqid('img-')}-${Date.now()}-cover.jpeg`;
+        }
+
+        const buffer = await sharp(req.files.coverImage[0].buffer)
             .resize({ width: 700 })
             .toFormat('jpeg')
             .jpeg({ quality: 90 })
-            .toFile(`public/img/client/${req.body.coverImage}`);
+            .toBuffer();
+
+        const command = new PutObjectCommand({
+            Bucket: process.env.BUCKET_NAME,
+            Key: req.body.coverImage,
+            Body: buffer,
+            ContentType: req.files.coverImage[0].mimetype,
+        });
+
+        await s3.send(command);
     }
 
     if (req.files.images) {
@@ -51,12 +69,20 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
             req.files.images.map(async (file, i) => {
                 const filename = `${uniqid('img-')}-${Date.now()}-${i + 1}.jpeg`;
 
-                await sharp(file.buffer)
+                const buffer = await sharp(file.buffer)
                     .resize({ width: 700 })
                     .toFormat('jpeg')
                     .jpeg({ quality: 90 })
-                    .toFile(`public/img/client/${filename}`);
+                    .toBuffer();
 
+                const command = new PutObjectCommand({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: filename,
+                    Body: buffer,
+                    ContentType: file.mimetype,
+                });
+
+                await s3.send(command);
                 req.body.images.push(filename);
             }),
         );
@@ -64,73 +90,61 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
     next();
 });
 
-exports.deleteOutdatedImages = async (req, res, next) => {
-    //  if there are no new images to update
-    if (!req.files.coverImage && !req.files.images) return next();
+exports.deletePreviousClientImages = catchAsync(async (req, res, next) => {
+    if (!req.files.images) return next();
 
     const doc = await Client.findById(req.params.id);
-    // console.log(doc);
 
-    if (req.files.coverImage) {
-        fs.unlink(`public/img/client/${doc.coverImage}`, (err) => {
-            if (err) {
-                console.log(`Error deleting previous cover image file: ${err}`);
-            } else {
-                console.log(`${doc.coverImage} was deleted`);
-            }
-        });
-    }
-
-    if (req.files.images) {
+    // if we are updating d images array and if there are previous images in the bucket
+    if (req.files.images && doc.images.length > 0) {
         await Promise.all(
-            doc.images.map(async (curFile) => {
-                fs.unlink(`public/img/client/${curFile}`, (err) => {
-                    if (err) {
-                        console.log(`Error deleting ${curFile} image file: ${err}`);
-                    } else {
-                        console.log(`${curFile} was deleted`);
-                    }
+            doc.images.map(async (curFileName) => {
+                const command2 = new DeleteObjectCommand({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: curFileName,
                 });
+                await s3.send(command2);
             }),
         );
     }
 
     next();
-};
+});
 
-exports.deleteAllClientImages = async (req, res, next) => {
+exports.deleteClientImages = catchAsync(async (req, res, next) => {
     const doc = await Client.findById(req.params.id);
 
-    // delete the cover image
-    fs.unlink(`public/img/client/${doc.coverImage}`, (err) => {
-        if (err) {
-            console.log(`Error deleting cover image file: ${err}`);
-        } else {
-            console.log(`${doc.coverImage} was deleted`);
-        }
-    });
+    if (!doc) {
+        return next(new AppError('No document found with that ID', 404));
+    }
 
-    // delete the client images in the images array
+    // Delete the cover image in the bucket
+    const params = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: doc.coverImage,
+    };
+    const command = new DeleteObjectCommand(params);
+    await s3.send(command);
+
+    // delete all the client images in the images in the bucket
     if (doc.images.length > 0) {
         await Promise.all(
-            doc.images.map(async (curFile) => {
-                fs.unlink(`public/img/client/${curFile}`, (err) => {
-                    if (err) {
-                        console.log(`Error deleting ${curFile} image file: ${err}`);
-                    } else {
-                        console.log(`${curFile} was deleted`);
-                    }
+            doc.images.map(async (curFileName) => {
+                const command2 = new DeleteObjectCommand({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: curFileName,
                 });
+                await s3.send(command2);
             }),
         );
     }
 
     next();
-};
+});
 
 exports.createClient = factory.createOne(Client);
 exports.updateClient = factory.updateOne(Client);
 
-exports.getAllClients = factory.getAll(Client);
-exports.getClient = factory.getOne(Client);
+exports.getAllClients = factory.getAll(Client, true, 'coverImage', 'coverImageUrl');
+exports.getClient = factory.getOne(Client, true, 'coverImage', 'coverImageUrl');
 exports.deleteClient = factory.deleteOne(Client);

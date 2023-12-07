@@ -12,6 +12,7 @@ router
         authController.restrictTo('lead-asist', 'admin'),
         galleryController.uploadGalleryPhoto,
         galleryController.resizeGalleryPhoto,
+        galleryController.checkAddImageHandler,
         galleryController.createGallerItem,
     );
 

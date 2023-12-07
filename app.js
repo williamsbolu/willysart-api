@@ -20,6 +20,7 @@ const factory = require('./controllers/handlerFactory');
 const app = express();
 
 // (1) Implement all nodejs/express and third party middlewares below
+app.enable('trust proxy'); // for d host pltform
 
 // implement CORS
 app.use(cors());

@@ -1,4 +1,8 @@
 const nodemailer = require('nodemailer');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
+const s3 = require('../utils/s3');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const APIFeatures = require('../utils/apiFeatures');
@@ -46,7 +50,7 @@ exports.createOne = (Model) =>
         });
     });
 
-exports.getOne = (Model) =>
+exports.getOne = (Model, imageFile = false, ...imgPathInfo) =>
     catchAsync(async (req, res, next) => {
         const doc = await Model.findById(req.params.id);
 
@@ -55,13 +59,33 @@ exports.getOne = (Model) =>
             return next(new AppError('No document found with that ID', 404));
         }
 
+        if (imageFile) {
+            const command = new GetObjectCommand({
+                Bucket: process.env.BUCKET_NAME,
+                Key: doc[imgPathInfo[0]],
+            });
+            const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+            doc[imgPathInfo[1]] = url;
+
+            if (doc.images && doc.images.length > 0) {
+                for (const imgPath of doc.images) {
+                    const command2 = new GetObjectCommand({
+                        Bucket: process.env.BUCKET_NAME,
+                        Key: imgPath,
+                    });
+                    const curUrl = await getSignedUrl(s3, command2, { expiresIn: 3600 });
+                    doc.imagesUrl.push(curUrl);
+                }
+            }
+        }
+
         res.status(200).json({
             status: 'success',
             data: doc,
         });
     });
 
-exports.getAll = (Model) =>
+exports.getAll = (Model, imageFile = false, ...imgPathInfo) =>
     catchAsync(async (req, res, next) => {
         const features = new APIFeatures(Model.find(), req.query)
             .filter()
@@ -70,6 +94,17 @@ exports.getAll = (Model) =>
             .paginate();
 
         const doc = await features.query;
+
+        if (imageFile) {
+            for (const curDoc of doc) {
+                const command = new GetObjectCommand({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: curDoc[imgPathInfo[0]],
+                });
+                const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+                curDoc[imgPathInfo[1]] = url;
+            }
+        }
 
         // SEND RESPONSE
         res.status(200).json({
@@ -153,6 +188,6 @@ exports.SendEmail = catchAsync(async (req, res, next) => {
 
     res.status(200).json({
         status: 'success',
-        message: 'Email submitted sucessfully',
+        message: 'Email sent successfully',
     });
 });

@@ -23,13 +23,13 @@ router
         authController.restrictTo('lead-asist', 'admin'),
         clientController.uploadClientImages,
         clientController.resizeClientImages,
-        clientController.deleteOutdatedImages,
+        clientController.deletePreviousClientImages,
         clientController.updateClient,
     )
     .delete(
         authController.protect,
         authController.restrictTo('lead-asist', 'admin'),
-        clientController.deleteAllClientImages,
+        clientController.deleteClientImages,
         clientController.deleteClient,
     );
 

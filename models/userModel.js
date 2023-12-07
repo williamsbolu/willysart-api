@@ -52,6 +52,7 @@ const userSchema = new mongoose.Schema({
         default: Date.now(),
         select: false,
     },
+    imageUrl: String,
     passwordChangedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,

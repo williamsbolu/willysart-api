@@ -1,7 +1,9 @@
-const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+
+const s3 = require('../utils/s3');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const Gallery = require('../models/galleryModel');
@@ -28,18 +30,35 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     // if there is no file
     if (!req.file) return next();
 
-    req.file.filename = `${uniqid('img-')}-${Date.now()}.jpeg`;
+    // meaning if we are sending an update request use the previous ffilename
+    if (req.params.id) {
+        const doc = await Gallery.findById(req.params.id);
+        req.file.filename = doc.image;
+    } else {
+        // if we're sending a create request, usea a unique filename
+        req.file.filename = `${uniqid('img-')}-${Date.now()}.jpeg`;
+    }
 
-    await sharp(req.file.buffer)
+    const buffer = await sharp(req.file.buffer)
         .resize({ width: 700 })
         .toFormat('jpeg')
         .jpeg({ quality: 90 })
-        .toFile(`public/img/gallery/${req.file.filename}`);
+        .toBuffer();
+
+    const command = new PutObjectCommand({
+        Bucket: process.env.BUCKET_NAME,
+        Key: req.file.filename,
+        Body: buffer,
+        ContentType: req.file.mimetype,
+    });
+
+    await s3.send(command);
 
     next();
 });
 
-exports.createGallerItem = catchAsync(async (req, res, next) => {
+// checks if there is an image, it true update the image file name in the request body
+exports.checkAddImageHandler = catchAsync(async (req, res, next) => {
     if (!req.file)
         return next(
             new AppError(
@@ -49,58 +68,29 @@ exports.createGallerItem = catchAsync(async (req, res, next) => {
         );
 
     req.body.image = req.file.filename;
-
-    const data = await Gallery.create(req.body);
-
-    res.status(201).json({
-        status: 'success',
-        data,
-    });
+    next();
 });
 
-exports.updateGalleryItem = catchAsync(async (req, res, next) => {
-    // if there's a file upload, we update the image field with the newly uploaded file name
-    if (req.file) {
-        req.body.image = req.file.filename;
-
-        const doc = await Gallery.findById(req.params.id);
-        // console.log(doc.image);
-
-        // delete the previous used image
-        fs.unlink(`public/img/gallery/${doc.image}`, (err) => {
-            if (err) {
-                console.log(`Error deleting previous image file: ${err}`);
-            } else {
-                console.log(`${doc.image} was deleted`);
-            }
-        });
-    }
-
-    const updatedItem = await Gallery.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true,
-    });
-
-    res.status(200).json({
-        status: 'success',
-        data: updatedItem,
-    });
-});
-
-exports.deleteGalleryImage = async (req, res, next) => {
+exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
     const doc = await Gallery.findById(req.params.id);
 
-    fs.unlink(`public/img/gallery/${doc.image}`, (err) => {
-        if (err) {
-            console.log(`Error deleting gallery image file: ${err}`);
-        } else {
-            console.log(`${doc.image} was deleted`);
-        }
-    });
+    if (!doc) {
+        return next(new AppError('No document found with that ID', 404));
+    }
+
+    const params = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: doc.image,
+    };
+
+    const command = new DeleteObjectCommand(params);
+    await s3.send(command);
 
     next();
-};
+});
 
-exports.getAllGalleryItems = factory.getAll(Gallery);
-exports.getGalleryItem = factory.getOne(Gallery);
+exports.createGallerItem = factory.createOne(Gallery);
+exports.getAllGalleryItems = factory.getAll(Gallery, true, 'image', 'imageUrl');
+exports.getGalleryItem = factory.getOne(Gallery, true, 'image', 'imageUrl');
+exports.updateGalleryItem = factory.updateOne(Gallery);
 exports.deleteGalleryItem = factory.deleteOne(Gallery);
