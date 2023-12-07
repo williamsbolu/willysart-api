@@ -28,7 +28,7 @@ exports.uploadGalleryPhoto = upload.single('image');
 
 exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     // if there is no file
-    if (!req.file) return next();
+    if (!req?.file) return next();
 
     // meaning if we are sending an update request use the previous ffilename
     if (req.params.id) {
@@ -59,7 +59,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
 
 // checks if there is an image, it true update the image file name in the request body
 exports.checkAddImageHandler = catchAsync(async (req, res, next) => {
-    if (!req.file)
+    if (!req?.file)
         return next(
             new AppError(
                 'No file was found! Add the image file from the input field to continue',

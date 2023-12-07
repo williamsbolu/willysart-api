@@ -31,7 +31,8 @@ exports.uploadClientImages = upload.fields([
 ]);
 
 exports.resizeClientImages = catchAsync(async (req, res, next) => {
-    if (!req.files.coverImage && !req.files.images) return next();
+    console.log(req.files);
+    if (!req?.files?.coverImage && !req?.files?.images) return next();
 
     // 1) coverImage
     if (req.files.coverImage) {
@@ -91,12 +92,12 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
 });
 
 exports.deletePreviousClientImages = catchAsync(async (req, res, next) => {
-    if (!req.files.images) return next();
+    if (!req?.files?.images) return next();
 
     const doc = await Client.findById(req.params.id);
 
     // if we are updating d images array and if there are previous images in the bucket
-    if (req.files.images && doc.images.length > 0) {
+    if (req.files?.images && doc?.images?.length > 0) {
         await Promise.all(
             doc.images.map(async (curFileName) => {
                 const command2 = new DeleteObjectCommand({
@@ -127,7 +128,7 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
     await s3.send(command);
 
     // delete all the client images in the images in the bucket
-    if (doc.images.length > 0) {
+    if (doc?.images?.length > 0) {
         await Promise.all(
             doc.images.map(async (curFileName) => {
                 const command2 = new DeleteObjectCommand({

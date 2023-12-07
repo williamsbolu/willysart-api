@@ -66,8 +66,8 @@ app.use(
 );
 
 app.use((req, res, next) => {
-    console.log(req.headers['x-forwarded-proto']);
-    console.log('secure', req.secure);
+    // console.log(req.headers['x-forwarded-proto']);
+    // console.log('secure', req.secure);
 
     next();
 });
