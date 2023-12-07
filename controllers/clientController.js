@@ -31,7 +31,6 @@ exports.uploadClientImages = upload.fields([
 ]);
 
 exports.resizeClientImages = catchAsync(async (req, res, next) => {
-    console.log(req.files);
     if (!req?.files?.coverImage && !req?.files?.images) return next();
 
     // 1) coverImage
