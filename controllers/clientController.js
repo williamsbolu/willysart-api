@@ -142,6 +142,19 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
     next();
 });
 
+exports.getClientSlug = catchAsync(async (req, res, next) => {
+    const data = await Client.findOne({ slug: req.params.slug });
+
+    if (!item) {
+        next(new AppError('There is no client with that name.', 404));
+    }
+
+    res.status(200).json({
+        status: 'success',
+        data,
+    });
+});
+
 exports.createClient = factory.createOne(Client);
 exports.updateClient = factory.updateOne(Client);
 

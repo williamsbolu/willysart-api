@@ -4,6 +4,8 @@ const authController = require('../controllers/authController');
 
 const router = express.Router();
 
+router.route('/client/:slug').get(clientController.getClientSlug);
+
 router
     .route('/')
     .get(clientController.getAllClients)
