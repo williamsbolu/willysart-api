@@ -145,7 +145,7 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
 exports.getClientSlug = catchAsync(async (req, res, next) => {
     const data = await Client.findOne({ slug: req.params.slug });
 
-    if (!item) {
+    if (!data) {
         next(new AppError('There is no client with that name.', 404));
     }
 
