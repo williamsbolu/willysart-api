@@ -25,6 +25,7 @@ app.set('trust proxy', 1);
 // implement CORS
 app.use(
     cors({
+        origin: 'https://fascinating-pixie-f4fdfb.netlify.app',
         credentials: true,
     }),
 );
