@@ -25,10 +25,7 @@ app.set('trust proxy', 1);
 // implement CORS
 app.use(
     cors({
-        origin: [
-            'https://fascinating-pixie-f4fdfb.netlify.app',
-            'http://localhost:5173/clients',
-        ],
+        origin: ['https://fascinating-pixie-f4fdfb.netlify.app', 'http://localhost:5173'],
         credentials: true,
     }),
 );
