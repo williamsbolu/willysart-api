@@ -23,7 +23,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 // implement CORS
-app.use(cors());
+app.use(
+    cors({
+        credentials: true,
+    }),
+);
 app.options('*', cors());
 
 // serving static files
