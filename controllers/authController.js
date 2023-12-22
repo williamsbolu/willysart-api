@@ -125,50 +125,55 @@ exports.protect = catchAsync(async (req, res, next) => {
 });
 
 exports.isLoggedInApi = async (req, res, next) => {
-    if (req.cookies.jwt) {
-        try {
-            // "throws" an error if it couldnt verify d token. thats why we use the try/catch block
-            const decoded = await promisify(jwt.verify)(
-                req.cookies.jwt,
-                process.env.JWT_SECRET,
-            );
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        // console.log('auth header is set 🎆🎆🎆');
+        token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies.jwt) {
+        token = req.cookies.jwt;
+    }
 
-            // Check if d user still exists
-            const currentUser = await User.findById(decoded.id);
-            if (!currentUser) {
-                return res.status(200).json({
-                    status: 'success',
-                    isLoggedIn: false,
-                });
-            }
+    if (!token) {
+        // By default if there is no token, or we dont have a cookie!
+        return res.status(200).json({
+            status: 'success',
+            isLoggedIn: false,
+        });
+    }
 
-            // Check if user changed password after the token was issued/created
-            if (currentUser.changePasswordAfter(decoded.iat)) {
-                return res.status(200).json({
-                    status: 'success',
-                    isLoggedIn: false,
-                });
-            }
+    try {
+        // "throws" an error if it couldnt verify d token. thats why we use the try/catch block
+        const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-            return res.status(200).json({
-                status: 'success',
-                user: currentUser,
-                isLoggedIn: true,
-            });
-        } catch (err) {
-            // TTHERE IS NO LOGGED IN USER. error from jwt.verify()
+        // Check if d user still exists
+        const currentUser = await User.findById(decoded.id);
+        if (!currentUser) {
             return res.status(200).json({
                 status: 'success',
                 isLoggedIn: false,
             });
         }
-    }
 
-    // By default if the cookie is invalid, or we dont have a cookie!
-    res.status(200).json({
-        status: 'success',
-        isLoggedIn: false,
-    });
+        // Check if user changed password after the token was issued/created
+        if (currentUser.changePasswordAfter(decoded.iat)) {
+            return res.status(200).json({
+                status: 'success',
+                isLoggedIn: false,
+            });
+        }
+
+        return res.status(200).json({
+            status: 'success',
+            user: currentUser,
+            isLoggedIn: true,
+        });
+    } catch (err) {
+        // THERE IS NO LOGGED IN USER. error from jwt.verify()
+        return res.status(200).json({
+            status: 'success',
+            isLoggedIn: false,
+        });
+    }
 };
 
 // A function that returns a middleware function
