@@ -44,7 +44,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Limit request from same APIs
 const limiter = rateLimit({
-    limit: 100,
+    limit: 2000,
     windowMs: 60 * 60 * 1000, // 1hr in milliseconds
     message: 'Too many request from this IP, please try again in an hour!',
 });
@@ -52,8 +52,8 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Body Parser, Cookie parser, form data parser
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
