@@ -25,7 +25,10 @@ app.set('trust proxy', 1);
 // implement CORS
 app.use(
     cors({
-        origin: ['https://fascinating-pixie-f4fdfb.netlify.app', 'http://localhost:5173'],
+        origin: [
+            'https://fascinating-pixie-f4fdfb.netlify.app',
+            'https://willysart-admin.vercel.app',
+        ],
         credentials: true,
     }),
 );
@@ -52,8 +55,8 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Body Parser, Cookie parser, form data parser
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
