@@ -23,7 +23,15 @@ const app = express();
 app.set('trust proxy', 1);
 
 // implement CORS
-app.use(cors());
+app.use(
+    cors({
+        origin: [
+            'https://fascinating-pixie-f4fdfb.netlify.app',
+            'https://willysart-admin.vercel.app',
+        ],
+        credentials: true,
+    }),
+);
 app.options('*', cors());
 
 // serving static files
