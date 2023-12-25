@@ -42,7 +42,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     const buffer = await sharp(req.file.buffer)
         .resize({ width: 700 })
         .toFormat('jpeg')
-        .jpeg({ quality: 90 })
+        .jpeg({ quality: 100 })
         .toBuffer();
 
     const command = new PutObjectCommand({
