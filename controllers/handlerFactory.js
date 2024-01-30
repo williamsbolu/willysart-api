@@ -59,7 +59,8 @@ exports.getOne = (Model, imageFile = false, ...imgPathInfo) =>
             return next(new AppError('No document found with that ID', 404));
         }
 
-        if (imageFile) {
+        // user condition is for the User model
+        if (imageFile || doc?.photo.startsWith('user')) {
             const command = new GetObjectCommand({
                 Bucket: process.env.BUCKET_NAME,
                 Key: doc[imgPathInfo[0]],
@@ -87,6 +88,12 @@ exports.getOne = (Model, imageFile = false, ...imgPathInfo) =>
 
 exports.getAll = (Model, imageFile = false, ...imgPathInfo) =>
     catchAsync(async (req, res, next) => {
+        // for caculating the total document count without pagination
+        const queryObj = { ...req.query };
+        const excludedFields = ['page', 'sort', 'limit', 'fields'];
+        excludedFields.forEach((el) => delete queryObj[el]);
+        const count = await Model.countDocuments(queryObj);
+
         const features = new APIFeatures(Model.find(), req.query)
             .filter()
             .sort()
@@ -109,6 +116,7 @@ exports.getAll = (Model, imageFile = false, ...imgPathInfo) =>
         // SEND RESPONSE
         res.status(200).json({
             status: 'success',
+            count,
             results: doc.length,
             data: doc,
         });

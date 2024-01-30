@@ -82,7 +82,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     }
 
     // 2. Filtered out unwanted fields names that are not allowed to be updated.
-    const fliteredBody = filterObj(req.body, 'firstName', 'lastName', 'email');
+    const fliteredBody = filterObj(req.body, 'firstName', 'lastName');
     if (req.file) fliteredBody.photo = req.file.filename; // Runs if we're updating the photo and adds a photo property to be updated
 
     // 3. Update user document
@@ -142,7 +142,8 @@ exports.createUser = (req, res) => {
 };
 
 exports.getAllUsers = factory.getAll(User);
-exports.getUser = factory.getOne(User);
+// false because we don't want it to create a user url by default
+exports.getUser = factory.getOne(User, false, 'photo', 'imageUrl');
 
 // do NOT update the password with this
 exports.updateUser = factory.updateOne(User);
