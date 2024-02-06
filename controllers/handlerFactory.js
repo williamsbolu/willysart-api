@@ -173,7 +173,7 @@ exports.SendEmail = catchAsync(async (req, res, next) => {
             process.env.BREVO_EMAIL_FROM
         }`,
         replyTo: mailInfo.email,
-        to: 'willitec99@gmail.com', // change admin email
+        to: 'williams.precious999@gmail.com', // change admin email
         subject: mailInfo.subject,
         text: mailInfo.message,
     });
