@@ -2,7 +2,12 @@ const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
-const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const {
+    PutObjectCommand,
+    DeleteObjectCommand,
+    GetObjectCommand,
+} = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const s3 = require('../utils/s3');
 const AppError = require('../utils/appError');
@@ -149,11 +154,20 @@ exports.getClientSlug = catchAsync(async (req, res, next) => {
         next(new AppError('There is no client with that name.', 404));
     }
 
-    doc.coverImageUrl = process.env.CLOUD_FRONT_URL + doc.coverImage;
+    const command = new GetObjectCommand({
+        Bucket: process.env.BUCKET_NAME,
+        Key: doc.coverImage,
+    });
+    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    doc.coverImageUrl = url;
 
     if (doc.images && doc.images.length > 0) {
         for (const imgPath of doc.images) {
-            const curUrl = process.env.CLOUD_FRONT_URL + imgPath;
+            const command2 = new GetObjectCommand({
+                Bucket: process.env.BUCKET_NAME,
+                Key: imgPath,
+            });
+            const curUrl = await getSignedUrl(s3, command2, { expiresIn: 3600 });
             doc.imagesUrl.push(curUrl);
         }
     }

@@ -1,10 +1,7 @@
-const { GetObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { promisify } = require('util');
 const User = require('../models/userModel');
-const s3 = require('../utils/s3');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const sendEmail = require('../utils/email');
@@ -156,12 +153,7 @@ exports.isLoggedInApi = async (req, res, next) => {
 
         // if the user has an uploaded image add the url
         if (currentUser.photo.startsWith('user')) {
-            const command = new GetObjectCommand({
-                Bucket: process.env.BUCKET_NAME,
-                Key: currentUser.photo,
-            });
-            const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-            currentUser.imageUrl = url;
+            currentUser.imageUrl = process.env.CLOUD_FRONT_URL + currentUser.photo;
         }
 
         return res.status(200).json({

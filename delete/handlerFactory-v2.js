@@ -1,5 +1,8 @@
 const nodemailer = require('nodemailer');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
+const s3 = require('../utils/s3');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const APIFeatures = require('../utils/apiFeatures');
@@ -58,11 +61,20 @@ exports.getOne = (Model, imageFile = false, ...imgPathInfo) =>
 
         // user condition is for the User model
         if (imageFile || doc?.photo.startsWith('user')) {
-            doc[imgPathInfo[1]] = process.env.CLOUD_FRONT_URL + doc[imgPathInfo[0]];
+            const command = new GetObjectCommand({
+                Bucket: process.env.BUCKET_NAME,
+                Key: doc[imgPathInfo[0]],
+            });
+            const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+            doc[imgPathInfo[1]] = url;
 
             if (doc.images && doc.images.length > 0) {
                 for (const imgPath of doc.images) {
-                    const curUrl = process.env.CLOUD_FRONT_URL + imgPath;
+                    const command2 = new GetObjectCommand({
+                        Bucket: process.env.BUCKET_NAME,
+                        Key: imgPath,
+                    });
+                    const curUrl = await getSignedUrl(s3, command2, { expiresIn: 3600 });
                     doc.imagesUrl.push(curUrl);
                 }
             }
@@ -82,7 +94,7 @@ exports.getAll = (Model, imageFile = false, ...imgPathInfo) =>
         excludedFields.forEach((el) => delete queryObj[el]);
         const count = await Model.countDocuments(queryObj);
 
-        const features = new APIFeatures(Model.find().select('+createdAt'), req.query)
+        const features = new APIFeatures(Model.find(), req.query)
             .filter()
             .sort()
             .limitFields()
@@ -92,8 +104,12 @@ exports.getAll = (Model, imageFile = false, ...imgPathInfo) =>
 
         if (imageFile) {
             for (const curDoc of doc) {
-                curDoc[imgPathInfo[1]] =
-                    process.env.CLOUD_FRONT_URL + curDoc[imgPathInfo[0]];
+                const command = new GetObjectCommand({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: curDoc[imgPathInfo[0]],
+                });
+                const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+                curDoc[imgPathInfo[1]] = url;
             }
         }
 
