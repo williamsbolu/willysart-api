@@ -90,20 +90,6 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
 
     req.invalidationKey = doc.image;
 
-    // // invalidate the cloud front cache for the deleted image
-    // const invalidationParams = {
-    //     DistributionId: process.env.DISTRIBUTION_ID,
-    //     InvalidationBatch: {
-    //         CallerReference: doc.image,
-    //         Paths: {
-    //             Quantity: 1,
-    //             Items: ['/' + doc.image],
-    //         },
-    //     },
-    // };
-    // const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
-    // await cloudFront.send(invalidationCommand);
-
     next();
 });
 

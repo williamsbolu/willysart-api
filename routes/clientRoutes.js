@@ -26,12 +26,14 @@ router
         clientController.uploadClientImages,
         clientController.resizeClientImages,
         clientController.deletePreviousClientImages,
+        clientController.sendClientImageInvalidationCommand,
         clientController.updateClient,
     )
     .delete(
         authController.protect,
         authController.restrictTo('lead-asist', 'admin'),
         clientController.deleteClientImages,
+        clientController.sendClientImageInvalidationCommand,
         clientController.deleteClient,
     );
 

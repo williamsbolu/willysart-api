@@ -3,12 +3,14 @@ const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
 
 const s3 = require('../utils/s3');
 const AppError = require('../utils/appError');
 const Client = require('../models/clientModel');
 const factory = require('./handlerFactory');
 const catchAsync = require('../utils/catchAsync');
+const cloudFront = require('../utils/cloudFront');
 
 const multerStorage = multer.memoryStorage();
 
@@ -39,6 +41,8 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
         if (req.params.id) {
             const doc = await Client.findById(req.params.id);
             req.body.coverImage = doc.coverImage;
+            req.coverImageinvalidationKey = doc.coverImage;
+            req.imagesInvalidationKeyArray = doc.images;
         } else {
             // if we're sending a create request, usea a unique filename
             req.body.coverImage = `${uniqid('img-')}-${Date.now()}-cover.jpeg`;
@@ -139,8 +143,58 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
         );
     }
 
+    req.coverImageinvalidationKey = doc.coverImage;
+    req.imagesInvalidationKeyArray = doc.images;
+
     next();
 });
+
+exports.sendClientImageInvalidationCommand = async (req, res, next) => {
+    try {
+        // if we are updating the coverImage
+        if (req?.files?.coverImage) {
+            // invalidate the cloud front cache for the coverImage
+            const invalidationParams = {
+                DistributionId: process.env.DISTRIBUTION_ID,
+                InvalidationBatch: {
+                    CallerReference: req.coverImageinvalidationKey,
+                    Paths: {
+                        Quantity: 1,
+                        Items: ['/' + req.coverImageinvalidationKey],
+                    },
+                },
+            };
+            const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+            await cloudFront.send(invalidationCommand);
+        }
+
+        // invalidate the cloud front cache for the images
+        if (req.imagesInvalidationKeyArray?.length > 0 && req?.files?.images) {
+            await Promise.all(
+                imagesInvalidationKeyArray.map(async (curKey) => {
+                    const invalidationParams = {
+                        DistributionId: process.env.DISTRIBUTION_ID,
+                        InvalidationBatch: {
+                            CallerReference: curKey,
+                            Paths: {
+                                Quantity: 1,
+                                Items: ['/' + curKey],
+                            },
+                        },
+                    };
+                    const invalidationCommand = new CreateInvalidationCommand(
+                        invalidationParams,
+                    );
+                    await cloudFront.send(invalidationCommand);
+                }),
+            );
+        }
+    } catch (error) {
+        next();
+    }
+
+    next();
+};
 
 exports.getClientSlug = catchAsync(async (req, res, next) => {
     const doc = await Client.findOne({ slug: req.params.slug });
