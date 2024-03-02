@@ -2,8 +2,9 @@ const multer = require('multer');
 const sharp = require('sharp');
 const uniqid = require('uniqid');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
-
+const { CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
 const s3 = require('../utils/s3');
+const cloudFront = require('../utils/cloudFront');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const Gallery = require('../models/galleryModel');
@@ -17,6 +18,7 @@ const multerFilter = (req, file, cb) => {
     } else {
         cb(new AppError('Not an image! Please upload only images', 400), false);
     }
+    CloudFrontClient;
 };
 
 const upload = multer({
@@ -85,6 +87,20 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
 
     const command = new DeleteObjectCommand(params);
     await s3.send(command);
+
+    // invalidate the cloud front cache for the deleted image
+    const invalidationParams = {
+        DistributionId: process.env.DISTRIBUTION_ID,
+        InvalidationBatch: {
+            CallerReference: doc.image,
+            Path: {
+                Quantity: 1,
+                Items: ['/' + doc.image],
+            },
+        },
+    };
+    const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+    await cloudFront.send(invalidationCommand);
 
     next();
 });
