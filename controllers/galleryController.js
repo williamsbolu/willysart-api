@@ -35,6 +35,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     if (req.params.id) {
         const doc = await Gallery.findById(req.params.id);
         req.file.filename = doc.image;
+        req.invalidationKey = doc.image;
     } else {
         // if we're sending a create request, usea a unique filename
         req.file.filename = `${uniqid('img-')}-${Date.now()}.jpeg`;
@@ -87,19 +88,21 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
     const command = new DeleteObjectCommand(params);
     await s3.send(command);
 
-    // invalidate the cloud front cache for the deleted image
-    const invalidationParams = {
-        DistributionId: process.env.DISTRIBUTION_ID,
-        InvalidationBatch: {
-            CallerReference: doc.image,
-            Paths: {
-                Quantity: 1,
-                Items: ['/' + doc.image],
-            },
-        },
-    };
-    const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
-    await cloudFront.send(invalidationCommand);
+    req.invalidationKey = doc.image;
+
+    // // invalidate the cloud front cache for the deleted image
+    // const invalidationParams = {
+    //     DistributionId: process.env.DISTRIBUTION_ID,
+    //     InvalidationBatch: {
+    //         CallerReference: doc.image,
+    //         Paths: {
+    //             Quantity: 1,
+    //             Items: ['/' + doc.image],
+    //         },
+    //     },
+    // };
+    // const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+    // await cloudFront.send(invalidationCommand);
 
     next();
 });
