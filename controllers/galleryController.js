@@ -92,7 +92,7 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
         DistributionId: process.env.DISTRIBUTION_ID,
         InvalidationBatch: {
             CallerReference: doc.image,
-            Path: {
+            Paths: {
                 Quantity: 1,
                 Items: ['/' + doc.image],
             },
