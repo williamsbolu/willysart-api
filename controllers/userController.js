@@ -1,12 +1,14 @@
 const multer = require('multer');
 const sharp = require('sharp');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
 
 const s3 = require('../utils/s3');
 const factory = require('./handlerFactory');
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const cloudFront = require('../utils/cloudFront');
 
 // Store files in memory(buffer)
 const multerStorage = multer.memoryStorage();
@@ -121,6 +123,20 @@ exports.deleteUserImage = catchAsync(async (req, res, next) => {
 
     const command = new DeleteObjectCommand(params);
     await s3.send(command);
+
+    // invalidate the cloud front cache for the deleted image
+    const invalidationParams = {
+        DistributionId: process.env.DISTRIBUTION_ID,
+        InvalidationBatch: {
+            CallerReference: doc.photo,
+            Path: {
+                Quantity: 1,
+                Items: ['/' + doc.photo],
+            },
+        },
+    };
+    const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+    await cloudFront.send(invalidationCommand);
 
     next();
 });

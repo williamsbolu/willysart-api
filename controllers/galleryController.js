@@ -18,7 +18,6 @@ const multerFilter = (req, file, cb) => {
     } else {
         cb(new AppError('Not an image! Please upload only images', 400), false);
     }
-    CloudFrontClient;
 };
 
 const upload = multer({
