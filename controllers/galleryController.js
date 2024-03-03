@@ -35,7 +35,6 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     if (req.params.id) {
         const doc = await Gallery.findById(req.params.id);
         req.file.filename = doc.image;
-        req.invalidationKey = doc.image;
     } else {
         // if we're sending a create request, usea a unique filename
         req.file.filename = `${uniqid('img-')}-${Date.now()}.jpeg`;
@@ -55,6 +54,24 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     });
 
     await s3.send(command);
+
+    // if we are updating an image, we update the cloudFront cache
+    if (req.params.id) {
+        const callerReferenceValue = `${req.file.filename}-${Date.now()}`;
+
+        const invalidationParams = {
+            DistributionId: process.env.DISTRIBUTION_ID,
+            InvalidationBatch: {
+                CallerReference: callerReferenceValue,
+                Paths: {
+                    Quantity: 1,
+                    Items: ['/' + req.file.filename],
+                },
+            },
+        };
+        const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+        await cloudFront.send(invalidationCommand);
+    }
 
     next();
 });
@@ -88,7 +105,19 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
     const command = new DeleteObjectCommand(params);
     await s3.send(command);
 
-    req.invalidationKey = doc.image;
+    // if we are deleting the image, we update the cloudFront cache immediately
+    const invalidationParams = {
+        DistributionId: process.env.DISTRIBUTION_ID,
+        InvalidationBatch: {
+            CallerReference: doc.image,
+            Paths: {
+                Quantity: 1,
+                Items: ['/' + doc.image],
+            },
+        },
+    };
+    const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+    await cloudFront.send(invalidationCommand);
 
     next();
 });

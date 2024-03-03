@@ -1,28 +1,8 @@
 const nodemailer = require('nodemailer');
-const { CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
 
-const cloudFront = require('../utils/cloudFront');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const APIFeatures = require('../utils/apiFeatures');
-
-exports.sendInvalidationCommand = catchAsync(async (req, res, next) => {
-    // invalidate the cloud front cache for the deleted image
-    const invalidationParams = {
-        DistributionId: process.env.DISTRIBUTION_ID,
-        InvalidationBatch: {
-            CallerReference: req.invalidationKey,
-            Paths: {
-                Quantity: 1,
-                Items: ['/' + req.invalidationKey],
-            },
-        },
-    };
-    const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
-    await cloudFront.send(invalidationCommand);
-
-    next();
-});
 
 exports.deleteOne = (Model) =>
     catchAsync(async (req, res, next) => {

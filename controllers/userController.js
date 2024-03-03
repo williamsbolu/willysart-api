@@ -31,6 +31,7 @@ exports.uploadUserPhoto = upload.single('photo');
 
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
     if (!req?.file) return next();
+    console.log('Running file upload and caching');
 
     const doc = await User.findById(req.user.id);
 
@@ -40,7 +41,6 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
     } else {
         // when d user is not updating for d first time we use the previous generated unique filename
         req.file.filename = doc.photo;
-        console.log(req.file.filename);
     }
 
     const buffer = await sharp(req.file.buffer)
@@ -57,6 +57,25 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
     });
 
     await s3.send(command);
+
+    // this code dosen't run when the user updates the image for the first time, because the file dosent exist on s3 yet
+    if (!doc.photo.startsWith('default')) {
+        // invalidate the cloud front cache for the updated image
+        const callerReferenceValue = `${req.file.filename}-${Date.now()}`;
+
+        const invalidationParams = {
+            DistributionId: process.env.DISTRIBUTION_ID,
+            InvalidationBatch: {
+                CallerReference: callerReferenceValue,
+                Paths: {
+                    Quantity: 1,
+                    Items: ['/' + req.file.filename],
+                },
+            },
+        };
+        const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+        await cloudFront.send(invalidationCommand);
+    }
 
     next();
 });
