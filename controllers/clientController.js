@@ -242,7 +242,7 @@ exports.getClientSlug = catchAsync(async (req, res, next) => {
         next(new AppError('There is no client with that name.', 404));
     }
 
-    doc.coverImageUrl = process.env.CLOUD_FRONT_URL + doc.coverImage;
+    doc.coverImageUrl = process.env.CLOUD_FRONT_URL + doc?.coverImage;
 
     if (doc.images && doc.images.length > 0) {
         for (const imgPath of doc.images) {
