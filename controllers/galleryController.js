@@ -37,7 +37,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
         req.file.filename = doc.image;
     } else {
         // if we're sending a create request, usea a unique filename
-        req.file.filename = `${uniqid('img-')}-${Date.now()}.jpeg`;
+        req.file.filename = `${uniqid('img-')}-${Date.now()}.jpg`;
     }
 
     const buffer = await sharp(req.file.buffer)

@@ -44,7 +44,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
             req.coverImageinvalidationKey = doc.coverImage;
         } else {
             // if we're sending a create request, usea a unique filename
-            req.body.coverImage = `${uniqid('img-')}-${Date.now()}-cover.jpeg`;
+            req.body.coverImage = `${uniqid('img-')}-${Date.now()}-cover.jpg`;
         }
 
         const buffer = await sharp(req.files.coverImage[0].buffer)
@@ -70,7 +70,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
         // and we use map() so we can save the promises returned from d loop, so we can await all of them using Promise.all(), only after that we call d next()
         await Promise.all(
             req.files.images.map(async (file, i) => {
-                const filename = `${uniqid('img-')}-${Date.now()}-${i + 1}.jpeg`;
+                const filename = `${uniqid('img-')}-${Date.now()}-${i + 1}.jpg`;
 
                 const buffer = await sharp(file.buffer)
                     .resize({ width: 700 })
@@ -172,7 +172,7 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
     await s3.send(command);
 
     // delete all the client images in the images in the bucket
-    if (doc?.images?.length > 0) {
+    if (doc.images?.length > 0) {
         await Promise.all(
             doc.images.map(async (curFileName) => {
                 const command2 = new DeleteObjectCommand({
