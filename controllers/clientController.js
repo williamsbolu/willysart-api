@@ -57,7 +57,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
             Bucket: process.env.BUCKET_NAME,
             Key: req.body.coverImage,
             Body: buffer,
-            ContentType: req.files.coverImage[0].mimetype,
+            ContentType: 'image/jpeg',
         });
 
         await s3.send(command);
@@ -82,7 +82,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
                     Bucket: process.env.BUCKET_NAME,
                     Key: filename,
                     Body: buffer,
-                    ContentType: file.mimetype,
+                    ContentType: 'image/jpeg',
                 });
 
                 await s3.send(command);

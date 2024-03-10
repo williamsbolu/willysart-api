@@ -50,7 +50,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
         Bucket: process.env.BUCKET_NAME,
         Key: req.file.filename,
         Body: buffer,
-        ContentType: req.file.mimetype,
+        ContentType: 'image/jpeg',
     });
 
     await s3.send(command);
