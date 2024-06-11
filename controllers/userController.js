@@ -143,19 +143,23 @@ exports.deleteUserImage = catchAsync(async (req, res, next) => {
     const command = new DeleteObjectCommand(params);
     await s3.send(command);
 
-    // invalidate the cloud front cache for the deleted image
-    const invalidationParams = {
-        DistributionId: process.env.USERS_DISTRIBUTION_ID,
-        InvalidationBatch: {
-            CallerReference: doc.photo,
-            Paths: {
-                Quantity: 1,
-                Items: ['/' + doc.photo],
+    try {
+        // invalidate the cloud front cache for the deleted image
+        const invalidationParams = {
+            DistributionId: process.env.USERS_DISTRIBUTION_ID,
+            InvalidationBatch: {
+                CallerReference: doc.photo,
+                Paths: {
+                    Quantity: 1,
+                    Items: ['/' + doc.photo],
+                },
             },
-        },
-    };
-    const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
-    await cloudFront.send(invalidationCommand);
+        };
+        const invalidationCommand = new CreateInvalidationCommand(invalidationParams);
+        await cloudFront.send(invalidationCommand);
+    } catch (error) {
+        next();
+    }
 
     next();
 });
