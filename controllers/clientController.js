@@ -55,7 +55,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
 
         const command = new PutObjectCommand({
             Bucket: process.env.BUCKET_NAME,
-            Key: req.body.coverImage,
+            Key: `artworks/${req.body.coverImage}`,
             Body: buffer,
             ContentType: 'image/jpeg',
         });
@@ -80,7 +80,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
 
                 const command = new PutObjectCommand({
                     Bucket: process.env.BUCKET_NAME,
-                    Key: filename,
+                    Key: `artworks/${filename}`,
                     Body: buffer,
                     ContentType: 'image/jpeg',
                 });
@@ -96,7 +96,7 @@ exports.resizeClientImages = catchAsync(async (req, res, next) => {
         const callerReferenceValue = `${req.coverImageinvalidationKey}-${Date.now()}`;
 
         const invalidationParams = {
-            DistributionId: process.env.DISTRIBUTION_ID,
+            DistributionId: process.env.ARTWORKS_DISTRIBUTION_ID,
             InvalidationBatch: {
                 CallerReference: callerReferenceValue,
                 Paths: {
@@ -123,7 +123,7 @@ exports.deletePreviousClientImages = catchAsync(async (req, res, next) => {
                 doc.images.map(async (curFileName) => {
                     const command2 = new DeleteObjectCommand({
                         Bucket: process.env.BUCKET_NAME,
-                        Key: curFileName,
+                        Key: `artworks/${curFileName}`,
                     });
                     await s3.send(command2);
                 }),
@@ -133,7 +133,7 @@ exports.deletePreviousClientImages = catchAsync(async (req, res, next) => {
             await Promise.all(
                 doc.images.map(async (curKey) => {
                     const invalidationParams = {
-                        DistributionId: process.env.DISTRIBUTION_ID,
+                        DistributionId: process.env.ARTWORKS_DISTRIBUTION_ID,
                         InvalidationBatch: {
                             CallerReference: curKey,
                             Paths: {
@@ -166,7 +166,7 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
     // Delete the cover image in the bucket
     const params = {
         Bucket: process.env.BUCKET_NAME,
-        Key: doc.coverImage,
+        Key: `artworks/${doc.coverImage}`,
     };
     const command = new DeleteObjectCommand(params);
     await s3.send(command);
@@ -177,7 +177,7 @@ exports.deleteClientImages = catchAsync(async (req, res, next) => {
             doc.images.map(async (curFileName) => {
                 const command2 = new DeleteObjectCommand({
                     Bucket: process.env.BUCKET_NAME,
-                    Key: curFileName,
+                    Key: `artworks/${curFileName}`,
                 });
                 await s3.send(command2);
             }),
@@ -194,7 +194,7 @@ exports.clearCloudfrontImageCache = catchAsync(async (req, res, next) => {
     try {
         // invalidate the cloud front cache for the coverImage
         const invalidationParams = {
-            DistributionId: process.env.DISTRIBUTION_ID,
+            DistributionId: process.env.ARTWORKS_DISTRIBUTION_ID,
             InvalidationBatch: {
                 CallerReference: req.coverImageinvalidationKey,
                 Paths: {
@@ -211,7 +211,7 @@ exports.clearCloudfrontImageCache = catchAsync(async (req, res, next) => {
             await Promise.all(
                 req.imagesInvalidationKeyArray.map(async (curKey) => {
                     const invalidationParams = {
-                        DistributionId: process.env.DISTRIBUTION_ID,
+                        DistributionId: process.env.ARTWORKS_DISTRIBUTION_ID,
                         InvalidationBatch: {
                             CallerReference: curKey,
                             Paths: {
@@ -242,11 +242,11 @@ exports.getClientSlug = catchAsync(async (req, res, next) => {
         next(new AppError('There is no client with that name.', 404));
     }
 
-    doc.coverImageUrl = process.env.CLOUD_FRONT_URL + doc?.coverImage;
+    doc.coverImageUrl = process.env.ARTWORKS_CLOUD_FRONT_URL + doc?.coverImage;
 
     if (doc.images && doc.images.length > 0) {
         for (const imgPath of doc.images) {
-            const curUrl = process.env.CLOUD_FRONT_URL + imgPath;
+            const curUrl = process.env.ARTWORKS_CLOUD_FRONT_URL + imgPath;
             doc.imagesUrl.push(curUrl);
         }
     }

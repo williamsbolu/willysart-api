@@ -153,7 +153,7 @@ exports.isLoggedInApi = async (req, res, next) => {
 
         // if the user has an uploaded image add the url
         if (currentUser.photo.startsWith('user')) {
-            currentUser.imageUrl = process.env.CLOUD_FRONT_URL + currentUser.photo;
+            currentUser.imageUrl = process.env.USERS_CLOUD_FRONT_URL + currentUser.photo;
         }
 
         return res.status(200).json({

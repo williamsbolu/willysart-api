@@ -31,7 +31,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
     // if there is no file
     if (!req?.file) return next();
 
-    // meaning if we are sending an update request use the previous ffilename
+    // meaning if we are sending an update request use the previous filename
     if (req.params.id) {
         const doc = await Gallery.findById(req.params.id);
         req.file.filename = doc.image;
@@ -48,7 +48,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
 
     const command = new PutObjectCommand({
         Bucket: process.env.BUCKET_NAME,
-        Key: req.file.filename,
+        Key: `artworks/${req.file.filename}`,
         Body: buffer,
         ContentType: 'image/jpeg',
     });
@@ -60,7 +60,7 @@ exports.resizeGalleryPhoto = catchAsync(async (req, res, next) => {
         const callerReferenceValue = `${req.file.filename}-${Date.now()}`;
 
         const invalidationParams = {
-            DistributionId: process.env.DISTRIBUTION_ID,
+            DistributionId: process.env.ARTWORKS_DISTRIBUTION_ID,
             InvalidationBatch: {
                 CallerReference: callerReferenceValue,
                 Paths: {
@@ -99,7 +99,7 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
 
     const params = {
         Bucket: process.env.BUCKET_NAME,
-        Key: doc.image,
+        Key: `artworks/${doc.image}`,
     };
 
     const command = new DeleteObjectCommand(params);
@@ -107,7 +107,7 @@ exports.deleteGalleryImage = catchAsync(async (req, res, next) => {
 
     // if we are deleting the image, we update the cloudFront cache immediately
     const invalidationParams = {
-        DistributionId: process.env.DISTRIBUTION_ID,
+        DistributionId: process.env.ARTWORKS_DISTRIBUTION_ID,
         InvalidationBatch: {
             CallerReference: doc.image,
             Paths: {

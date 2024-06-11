@@ -31,13 +31,13 @@ exports.uploadUserPhoto = upload.single('photo');
 
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
     if (!req?.file) return next();
-    console.log('Running file upload and caching');
+    // console.log('Running file upload and caching');
 
     const doc = await User.findById(req.user.id);
 
     // ('default) means when d user updates the profile img for d first time we create a unique filename
     if (doc.photo.startsWith('default')) {
-        req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`; // so we can use it in the updateMe middleware
+        req.file.filename = `user-${req.user.id}-${Date.now()}.jpg`; // so we can use it in the updateMe middleware
     } else {
         // when d user is not updating for d first time we use the previous generated unique filename
         req.file.filename = doc.photo;
@@ -45,15 +45,15 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
 
     const buffer = await sharp(req.file.buffer)
         .resize(500, 500)
-        .toFormat('jpeg')
+        .toFormat('jpg')
         .jpeg({ quality: 90 })
         .toBuffer();
 
     const command = new PutObjectCommand({
         Bucket: process.env.BUCKET_NAME,
-        Key: req.file.filename,
+        Key: `users/${req.file.filename}`,
         Body: buffer,
-        ContentType: req.file.mimetype,
+        ContentType: 'image/jpeg',
     });
 
     await s3.send(command);
@@ -64,7 +64,7 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
         const callerReferenceValue = `${req.file.filename}-${Date.now()}`;
 
         const invalidationParams = {
-            DistributionId: process.env.DISTRIBUTION_ID,
+            DistributionId: process.env.USERS_DISTRIBUTION_ID,
             InvalidationBatch: {
                 CallerReference: callerReferenceValue,
                 Paths: {
@@ -137,7 +137,7 @@ exports.deleteUserImage = catchAsync(async (req, res, next) => {
 
     const params = {
         Bucket: process.env.BUCKET_NAME,
-        Key: doc.photo,
+        Key: `users/${doc.photo}`,
     };
 
     const command = new DeleteObjectCommand(params);
@@ -145,7 +145,7 @@ exports.deleteUserImage = catchAsync(async (req, res, next) => {
 
     // invalidate the cloud front cache for the deleted image
     const invalidationParams = {
-        DistributionId: process.env.DISTRIBUTION_ID,
+        DistributionId: process.env.USERS_DISTRIBUTION_ID,
         InvalidationBatch: {
             CallerReference: doc.photo,
             Paths: {

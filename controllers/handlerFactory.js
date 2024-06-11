@@ -56,13 +56,18 @@ exports.getOne = (Model, imageFile = false, ...imgPathInfo) =>
             return next(new AppError('No document found with that ID', 404));
         }
 
+        const CLOUD_FRONT_URL =
+            imgPathInfo[0] === 'photo'
+                ? process.env.USERS_CLOUD_FRONT_URL
+                : process.env.ARTWORKS_CLOUD_FRONT_URL;
+
         // user condition is for the User model
         if (imageFile || doc?.photo.startsWith('user')) {
-            doc[imgPathInfo[1]] = process.env.CLOUD_FRONT_URL + doc[imgPathInfo[0]];
+            doc[imgPathInfo[1]] = CLOUD_FRONT_URL + doc[imgPathInfo[0]];
 
             if (doc.images && doc.images.length > 0) {
                 for (const imgPath of doc.images) {
-                    const curUrl = process.env.CLOUD_FRONT_URL + imgPath;
+                    const curUrl = CLOUD_FRONT_URL + imgPath;
                     doc.imagesUrl.push(curUrl);
                 }
             }
@@ -90,10 +95,14 @@ exports.getAll = (Model, imageFile = false, ...imgPathInfo) =>
 
         const doc = await features.query;
 
+        const CLOUD_FRONT_URL =
+            imgPathInfo[0] === 'photo'
+                ? process.env.USERS_CLOUD_FRONT_URL
+                : process.env.ARTWORKS_CLOUD_FRONT_URL;
+
         if (imageFile) {
             for (const curDoc of doc) {
-                curDoc[imgPathInfo[1]] =
-                    process.env.CLOUD_FRONT_URL + curDoc[imgPathInfo[0]];
+                curDoc[imgPathInfo[1]] = CLOUD_FRONT_URL + curDoc[imgPathInfo[0]];
             }
         }
 
